@@ -45,6 +45,28 @@ class Switches(Resource):
 
         return jsonify({"success:": True, "data": pins})
 
+    @staticmethod
+    @requires_auth
+    def put(switches):
+        split = switches.split(",")
+
+        states = [0] * len(split)
+
+        try:
+            states = json.loads(request.data.decode())['states']
+        except:
+            pass
+
+        for i in range(len(split)):
+            GPIO.output(config['pins'][int(split[i])], states[i])
+
+        pins = {}
+
+        for i in range(len(config['pins'])):
+            pins[i] = GPIO.input(config['pins'][i])
+
+        return jsonify({"success": True, "data": pins})
+
 
 class Switch(Resource):
     @staticmethod
@@ -77,7 +99,8 @@ if __name__ == '__main__':
     api = Api(app)
 
     api.add_resource(Pins, '/v1/pins')
-    api.add_resource(Switches, '/v1/switches')
     api.add_resource(Switch, '/v1/switch/<switch>')
+    api.add_resource(Switches, '/v1/switches')
+    api.add_resource(Switches, '/v1/switches/<switches>')
 
     app.run(host='0.0.0.0', port='8080')
