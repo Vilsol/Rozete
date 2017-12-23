@@ -59,8 +59,8 @@ class Switch(Resource):
 
         try:
             state = json.loads(request.data)['state']
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
         GPIO.output(config['pins'][int(switch)], state)
 
@@ -80,4 +80,4 @@ if __name__ == '__main__':
     api.add_resource(Switches, '/v1/switches')
     api.add_resource(Switch, '/v1/switch/<switch>')
 
-    app.run(port='8080')
+    app.run(host='0.0.0.0', port='8080')
