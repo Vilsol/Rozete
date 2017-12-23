@@ -1,0 +1,9 @@
+{
+  "token": "SOME_RANDOM_STRING",
+  "pins": [
+    5,
+    6,
+    13,
+    26
+  ]
+}
