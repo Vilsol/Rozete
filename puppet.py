@@ -58,7 +58,7 @@ class Switch(Resource):
         state = 0
 
         try:
-            state = json.loads(request.data)['state']
+            state = json.loads(request.data.decode())['state']
         except Exception as e:
             print(e)
 
