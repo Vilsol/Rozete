@@ -2,10 +2,12 @@ from flask import Flask, request, send_from_directory
 
 from blocks import Sequence
 
+from threading import Thread
+
 import requests
 import json
-import ezthread
 import random
+import signal
 
 config = json.load(open("server.json"))
 
@@ -14,6 +16,10 @@ class Controller:
     def __init__(self, puppets, layout):
         self.puppets = puppets
         self.layout = layout
+
+    @staticmethod
+    def send_request(endpoint, data, headers):
+        requests.put(endpoint, data=data, headers=headers).json()
 
     def set_state(self, row, col, state):
         compound = self.layout[row][col]
@@ -48,6 +54,8 @@ class Controller:
             results[compound[0]]['switches'].append(str(switch))
             results[compound[0]]['states'].append(states[i])
 
+        threads = []
+
         for i in results:
             result = results[i]
 
@@ -55,7 +63,21 @@ class Controller:
             data = json.dumps({"states": result['states']})
             headers = {'rozete-token': result['puppet']['token']}
 
-            requests.put(endpoint, data=data, headers=headers).json()
+            thread = Thread(target=Controller.send_request, args=(endpoint, data, headers,))
+            thread.start()
+
+        for i in threads:
+            i.join()
+
+    def shutdown(self):
+        positions = []
+        states = []
+        for row in range(len(self.layout)):
+            for col in range(len(self.layout[row])):
+                positions.append([row, col])
+                states.append(0)
+
+        self.set_states(positions, states)
 
 
 def get_switches(puppets):
@@ -163,9 +185,22 @@ if __name__ == '__main__':
             return f.read()
 
 
-    pool = ezthread.EzPool()
-    pool.submit(lights_loop, controller)
+    def signal_term_handler(signal, frame):
+        print("CATCH")
+        controller.shutdown()
+        exit(0)
 
-    app.run(host='0.0.0.0', port='8080')
 
-    pool.kill()
+    signal.signal(signal.SIGTERM, signal_term_handler)
+
+    thread = Thread(target=lights_loop, args=(controller,))
+    thread.start()
+
+    try:
+        app.run(host='0.0.0.0', port='8080')
+
+        thread.join()
+    except Exception as e:
+        pass
+    finally:
+        controller.shutdown()

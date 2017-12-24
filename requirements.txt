@@ -2,4 +2,3 @@ flask
 flask-jsonpify
 flask-restful
 requests
-ezthread
