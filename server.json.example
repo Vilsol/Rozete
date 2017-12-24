@@ -1,0 +1,14 @@
+{
+  "puppets": [
+    {
+      "remote": "192.168.1.240:8080",
+      "token": "SOME_RANDOM_STRING",
+      "switches": [0, 1, 2, 3]
+    }
+  ],
+  "layout": [
+    [[0, 0], [0, 1]],
+    [null,   [0, 2]],
+    [null,   [0, 3]]
+  ]
+}

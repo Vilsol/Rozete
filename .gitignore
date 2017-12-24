@@ -3,3 +3,7 @@
 *.iml
 
 puppet.json
+server.json
+
+sequence.json
+sequence.xml

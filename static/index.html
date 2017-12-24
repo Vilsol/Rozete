@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Rozete</title>
+    <script src="/coordinates" type="application/javascript"></script>
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div id="blocklyDiv" style="height: 100vh; width: 85%; float: left"></div>
+
+<xml id="toolbox" style="display: none">
+    <block type="sequence">
+        <field name="REPEAT">10</field>
+    </block>
+    <block type="actions"></block>
+    <block type="state">
+        <field name="X">0</field>
+        <field name="STATE">1</field>
+    </block>
+    <block type="delay">
+        <field name="DELAY">1</field>
+    </block>
+    <block type="delay">
+        <field name="DELAY">0.75</field>
+    </block>
+    <block type="delay">
+        <field name="DELAY">0.5</field>
+    </block>
+    <block type="delay">
+        <field name="DELAY">0.25</field>
+    </block>
+</xml>
+
+<xml id="startBlocks" style="display: none"></xml>
+
+<textarea id="result" rows="25" cols="100" style="width: 14.5%; height: 99vh" title="json"></textarea>
+
+
+<script>
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "/xml", false);
+    xhr.send(null);
+
+    document.getElementById("startBlocks").innerHTML = xhr.responseText;
+</script>
+
+<script src="blockly.min.js"></script>
+<script src="blocks.min.js"></script>
+<script src="javascript.min.js"></script>
+<script src="custom_blocks.js"></script>
+<script src="json.js"></script>
+<script src="en.js"></script>
+
+<script>
+    var toolbox = document.getElementById('toolbox');
+
+    var options = {
+        toolbox: toolbox,
+        collapse: true,
+        comments: true,
+        disable: true,
+        maxBlocks: Infinity,
+        trashcan: true,
+        horizontalLayout: false,
+        toolboxPosition: 'start',
+        css: true,
+        media: 'https://blockly-demo.appspot.com/static/media/',
+        rtl: false,
+        scrollbars: true,
+        oneBasedIndex: true,
+        grid: {
+            spacing: 20,
+            length: 1,
+            colour: '#888',
+            snap: false
+        }
+    };
+
+    var workspace = Blockly.inject('blocklyDiv', options);
+
+    Blockly.Xml.domToWorkspace(document.getElementById('startBlocks'), workspace);
+
+    function getJson() {
+        var code = Blockly.JavaScript.workspaceToCode(workspace);
+        code = code.substr(0, code.length - 1);
+        return "[" + code + "]"
+    }
+
+    function onUpdate() {
+        var result = getJson();
+        document.getElementById("result").innerText = JSON.stringify(JSON.parse(result), null, 4);
+
+        var data = {
+            "json": result,
+            "xml": Blockly.Xml.workspaceToDom(workspace).innerHTML
+        };
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/save", true);
+        xhr.send(JSON.stringify(data));
+    }
+
+    workspace.addChangeListener(onUpdate);
+</script>
+
+</body>
+</html>
