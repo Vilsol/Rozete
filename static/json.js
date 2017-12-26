@@ -3,11 +3,11 @@ Blockly.JavaScript['sequence'] = function (block) {
 
     steps = steps.substr(0, steps.length - 1);
 
-    return '{"type": "sequence", "repeat": ' + block.getFieldValue('REPEAT') + ', "steps": [' + steps + ']},';
+    return '{"type": "sequence", "repeat": ' + block.getFieldValue('REPEAT') + ', "alone": ' + (block.getFieldValue('ALONE') === 'TRUE') + ', "steps": [' + steps + ']},';
 };
 
 Blockly.JavaScript['delay'] = function (block) {
-    return '{"type": "delay", "delay": ' + block.getFieldValue('DELAY') + '},';
+    return '{"id": "' + block.id + '", "type": "delay", "delay": ' + block.getFieldValue('DELAY') + '},';
 };
 
 Blockly.JavaScript['actions'] = function (block) {
@@ -15,7 +15,7 @@ Blockly.JavaScript['actions'] = function (block) {
 
     actions = actions.substr(0, actions.length - 1);
 
-    return '{"type": "actions", "actions": [' + actions + ']},';
+    return '{"id": "' + block.id + '", "type": "actions", "actions": [' + actions + ']},';
 };
 
 Blockly.JavaScript['state'] = function (block) {

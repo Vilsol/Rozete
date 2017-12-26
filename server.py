@@ -1,4 +1,5 @@
 from flask import Flask, request, send_from_directory
+from flask_socketio import SocketIO
 
 from blocks import Sequence
 
@@ -13,19 +14,25 @@ config = json.load(open("server.json"))
 
 
 class Controller:
-    def __init__(self, puppets, layout):
+    def __init__(self, puppets, layout, socket):
         self.puppets = puppets
         self.layout = layout
+        self.socket = socket
 
     @staticmethod
     def send_request(endpoint, data, headers):
-        requests.put(endpoint, data=data, headers=headers).json()
+        try:
+            requests.put(endpoint, data=data, headers=headers).json()
+        except:
+            print("Failed to PUT:", endpoint)
 
     def set_state(self, row, col, state):
         compound = self.layout[row][col]
 
         if compound is None:
             return
+
+        self.socket.emit("turn", json.dumps({"pos": [row, col], "state": state}))
 
         puppet = self.puppets[compound[0]]
         switch = compound[1]
@@ -34,7 +41,7 @@ class Controller:
         data = json.dumps({"state": state})
         headers = {'rozete-token': puppet['token']}
 
-        requests.put(endpoint, data=data, headers=headers).json()
+        Controller.send_request(endpoint, data, headers)
 
     def set_states(self, positions, states):
         results = {}
@@ -44,6 +51,8 @@ class Controller:
 
             if compound is None:
                 continue
+
+            self.socket.emit("turn", json.dumps({"pos": positions[i], "state": states[i]}))
 
             puppet = self.puppets[compound[0]]
             switch = compound[1]
@@ -78,6 +87,9 @@ class Controller:
                 states.append(0)
 
         self.set_states(positions, states)
+
+    def highlight(self, id):
+        self.socket.emit("highlight", id)
 
 
 def get_switches(puppets):
@@ -120,6 +132,8 @@ def reload_sequences():
     for raw in data:
         sequence = Sequence.decode(raw)
         if sequence is not None:
+            if sequence.alone:
+                return [sequence]
             sequences.append(sequence)
 
     return sequences
@@ -144,9 +158,10 @@ if __name__ == '__main__':
         print("Invalid Layout")
         exit(1)
 
-    controller = Controller(config['puppets'], config['layout'])
-
     app = Flask(__name__)
+    socketio = SocketIO(app, async_mode='threading')
+
+    controller = Controller(config['puppets'], config['layout'], socketio)
 
 
     @app.route('/static/<path:path>')
@@ -185,6 +200,20 @@ if __name__ == '__main__':
             return f.read()
 
 
+    @app.route('/layout')
+    def layout():
+        result = {}
+        for row in range(len(config['layout'])):
+            result[row] = {}
+            for col in range(len(config['layout'][row])):
+                if config['layout'][row][col] is not None:
+                    result[row][col] = 1
+                else:
+                    result[row][col] = 0
+
+        return json.dumps({"success": True, "data": result})
+
+
     def signal_term_handler(signal, frame):
         print("CATCH")
         controller.shutdown()
@@ -197,7 +226,7 @@ if __name__ == '__main__':
     thread.start()
 
     try:
-        app.run(host='0.0.0.0', port='8080')
+        socketio.run(app, host='0.0.0.0', port='8080', log_output=False)
 
         thread.join()
     except Exception as e:

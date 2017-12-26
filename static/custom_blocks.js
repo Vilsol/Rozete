@@ -1,7 +1,8 @@
 Blockly.Blocks['sequence'] = {
     init: function () {
         this.appendDummyInput()
-            .appendField("Sequence");
+            .appendField("Sequence")
+            .appendField(new Blockly.FieldCheckbox("FALSE"), "ALONE");
         this.appendDummyInput()
             .appendField("Repeat")
             .appendField(new Blockly.FieldNumber(10, 1, 100), "REPEAT")

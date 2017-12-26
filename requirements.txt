@@ -2,3 +2,4 @@ flask
 flask-jsonpify
 flask-restful
 requests
+flask-socketio

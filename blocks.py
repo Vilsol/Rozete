@@ -7,9 +7,10 @@ class Executable:
 
 
 class Sequence(Executable):
-    def __init__(self, repeat, steps):
+    def __init__(self, repeat, steps, alone):
         self.repeat = repeat
         self.steps = steps
+        self.alone = alone
 
     @staticmethod
     def decode(data):
@@ -17,6 +18,7 @@ class Sequence(Executable):
             return
 
         repeat = data['repeat']
+        alone = data['alone']
         steps = []
 
         for step in data['steps']:
@@ -27,29 +29,32 @@ class Sequence(Executable):
             elif type == 'actions':
                 steps.append(Actions.decode(step))
 
-        return Sequence(repeat, steps)
+        return Sequence(repeat, steps, alone)
 
     def execute(self, controller):
         for i in range(self.repeat):
             for step in self.steps:
+                controller.highlight(step.id)
                 step.execute(controller)
 
 
 class Delay(Executable):
-    def __init__(self, delay):
+    def __init__(self, delay, id):
         self.delay = delay
+        self.id = id
 
     @staticmethod
     def decode(data):
-        return Delay(float(data['delay']))
+        return Delay(float(data['delay']), data['id'])
 
     def execute(self, controller):
         time.sleep(self.delay)
 
 
 class Actions(Executable):
-    def __init__(self, actions):
+    def __init__(self, actions, id):
         self.actions = actions
+        self.id = id
 
     @staticmethod
     def decode(data):
@@ -61,7 +66,8 @@ class Actions(Executable):
             if type == 'turn':
                 actions.append(Turn.decode(action))
 
-        return Actions(actions)
+        id = data['id']
+        return Actions(actions, id)
 
     def execute(self, controller):
         positions = []
