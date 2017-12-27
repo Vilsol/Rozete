@@ -12,6 +12,11 @@ import signal
 
 config = json.load(open("server.json"))
 
+live_config = {
+    "sequence_enabled": False,
+    "lights_on": True
+}
+
 
 class Controller:
     def __init__(self, puppets, layout, socket):
@@ -20,13 +25,14 @@ class Controller:
         self.socket = socket
 
     @staticmethod
-    def send_request(endpoint, data, headers):
-        try:
-            requests.put(endpoint, data=data, headers=headers).json()
-        except:
-            print("Failed to PUT:", endpoint)
+    def send_request(endpoint, data, headers, override=False):
+        if override or live_config["sequence_enabled"]:
+            try:
+                requests.put(endpoint, data=data, headers=headers).json()
+            except:
+                print("Failed to PUT:", endpoint)
 
-    def set_state(self, row, col, state):
+    def set_state(self, row, col, state, override=False):
         compound = self.layout[row][col]
 
         if compound is None:
@@ -41,9 +47,9 @@ class Controller:
         data = json.dumps({"state": state})
         headers = {'rozete-token': puppet['token']}
 
-        Controller.send_request(endpoint, data, headers)
+        Controller.send_request(endpoint, data, headers, override)
 
-    def set_states(self, positions, states):
+    def set_states(self, positions, states, override=False):
         results = {}
 
         for i in range(len(positions)):
@@ -72,21 +78,27 @@ class Controller:
             data = json.dumps({"states": result['states']})
             headers = {'rozete-token': result['puppet']['token']}
 
-            thread = Thread(target=Controller.send_request, args=(endpoint, data, headers,))
+            thread = Thread(target=Controller.send_request, args=(endpoint, data, headers, override,))
             thread.start()
 
         for i in threads:
             i.join()
 
-    def shutdown(self):
+    def all_turn(self, state):
         positions = []
         states = []
         for row in range(len(self.layout)):
             for col in range(len(self.layout[row])):
                 positions.append([row, col])
-                states.append(0)
+                states.append(state)
 
-        self.set_states(positions, states)
+        self.set_states(positions, states, True)
+
+    def all_on(self):
+        self.all_turn(1)
+
+    def all_off(self):
+        self.all_turn(0)
 
     def highlight(self, id):
         self.socket.emit("highlight", id)
@@ -214,9 +226,25 @@ if __name__ == '__main__':
         return json.dumps({"success": True, "data": result})
 
 
+    @app.route('/live_config')
+    def get_live_config():
+        return json.dumps({"success": True, "data": live_config})
+
+
+    @socketio.on('live_config')
+    def handle_message(message):
+        global live_config
+        live_config = message
+
+        if not live_config["sequence_enabled"]:
+            if live_config["lights_on"]:
+                controller.all_on()
+            else:
+                controller.all_off()
+
+
     def signal_term_handler(signal, frame):
-        print("CATCH")
-        controller.shutdown()
+        controller.all_off()
         exit(0)
 
 
@@ -225,6 +253,8 @@ if __name__ == '__main__':
     thread = Thread(target=lights_loop, args=(controller,))
     thread.start()
 
+    controller.all_on()
+
     try:
         socketio.run(app, host='0.0.0.0', port='8080', log_output=False)
 
@@ -232,4 +262,4 @@ if __name__ == '__main__':
     except Exception as e:
         pass
     finally:
-        controller.shutdown()
+        controller.all_off()
